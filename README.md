@@ -39,5 +39,5 @@ This project is a blockchain-based system for secure and forgery-resistant acade
 
 ## 👨‍💻 Author
 
-Your Name
+Abhinav Dwivedi
 
