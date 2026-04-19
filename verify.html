@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CredentialChain — Verify Credential</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #f8f9fc;
+      --bg-white:    #ffffff;
+      --bg-dark:     #0f1117;
+      --border:      #e2e6ef;
+      --border-dark: #d0d5e2;
+      --accent:      #1a56db;
+      --accent-hi:   #1d4ed8;
+      --accent-soft: #eff6ff;
+      --green:       #059669;
+      --green-soft:  #ecfdf5;
+      --green-border:#a7f3d0;
+      --red:         #dc2626;
+      --red-soft:    #fef2f2;
+      --red-border:  #fca5a5;
+      --amber:       #d97706;
+      --amber-soft:  #fffbeb;
+      --amber-border:#fde68a;
+      --text:        #0f172a;
+      --text-mid:    #475569;
+      --text-dim:    #94a3b8;
+      --mono:        'DM Mono', monospace;
+      --sans:        'DM Sans', sans-serif;
+      --radius:      12px;
+      --shadow:      0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+      --shadow-lg:   0 8px 32px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─── */
+    header {
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 0 var(--border);
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-chain {
+      background: var(--accent);
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-mid);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--accent); }
+
+    .nav-links a.active { color: var(--accent); }
+
+    /* ── HERO ─── */
+    .hero {
+      background: linear-gradient(135deg, #0f1117 0%, #1e1b4b 50%, #0f1117 100%);
+      padding: 72px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 50%, rgba(29,78,216,0.15) 0%, transparent 60%);
+    }
+
+    .hero-content { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #818cf8;
+      margin-bottom: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      width: 32px;
+      height: 1px;
+      background: #818cf8;
+    }
+
+    .hero h1 {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      color: white;
+      margin-bottom: 14px;
+      line-height: 1.1;
+    }
+
+    .hero h1 span { color: #818cf8; }
+
+    .hero p {
+      color: #94a3b8;
+      font-size: 17px;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* ── MAIN CONTENT ─── */
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ── TABS ─── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      color: var(--text-mid);
+      border: none;
+      background: none;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 2px 8px rgba(29,86,219,0.35);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── CARD ─── */
+    .card {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-mid);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── FORM ─── */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg-white);
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(29,86,219,0.12);
+    }
+
+    input::placeholder { color: var(--text-dim); }
+
+    /* ── FILE DROP ─── */
+    .file-drop {
+      border: 2px dashed var(--border-dark);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      background: var(--bg);
+    }
+
+    .file-drop:hover, .file-drop.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .file-drop input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+    }
+
+    .file-drop-icon { font-size: 36px; margin-bottom: 12px; }
+    .file-drop-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .file-drop-sub { font-size: 13px; color: var(--text-dim); }
+
+    /* ── BUTTON ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hi);
+      box-shadow: 0 4px 12px rgba(29,86,219,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── RESULT ─── */
+    #result { margin-top: 24px; }
+
+    .result-box {
+      border-radius: var(--radius);
+      padding: 28px;
+      border: 2px solid;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .result-box.valid {
+      background: var(--green-soft);
+      border-color: var(--green-border);
+    }
+
+    .result-box.invalid {
+      background: var(--red-soft);
+      border-color: var(--red-border);
+    }
+
+    .result-box.revoked {
+      background: var(--amber-soft);
+      border-color: var(--amber-border);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-icon {
+      font-size: 52px;
+      margin-bottom: 14px;
+      display: block;
+      text-align: center;
+    }
+
+    .result-status {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+
+    .result-box.valid   .result-status { color: var(--green); }
+    .result-box.invalid .result-status { color: var(--red); }
+    .result-box.revoked .result-status { color: var(--amber); }
+
+    .result-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-mid);
+      margin-bottom: 24px;
+    }
+
+    .result-divider {
+      height: 1px;
+      background: currentColor;
+      opacity: 0.15;
+      margin: 20px 0;
+    }
+
+    .result-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .meta-item { }
+
+    .meta-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 3px;
+    }
+
+    .meta-value {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .meta-value a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .meta-value a:hover { text-decoration: underline; }
+
+    .meta-item.full { grid-column: span 2; }
+
+    /* ── HOW IT WORKS ─── */
+    .how-section {
+      margin-top: 48px;
+    }
+
+    .how-title {
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 28px;
+      letter-spacing: -0.3px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+
+    .step h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step p  { font-size: 12px; color: var(--text-mid); }
+
+    /* ── SPINNER ─── */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      background: var(--bg-dark);
+      color: #475569;
+      text-align: center;
+      padding: 28px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─── -->
+<header>
+  <div class="logo">
+    <div class="logo-chain">⛓</div>
+    CredentialChain
+  </div>
+  <nav class="nav-links">
+    <a href="#" class="active">Verify</a>
+    <a href="mailto:admin@yourorg.com">Contact Issuer</a>
+  </nav>
+</header>
+
+<!-- ── HERO ─── -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Blockchain Verification</div>
+    <h1>Verify Any<br><span>Credential</span></h1>
+    <p>Instantly check if a credential is authentic and hasn't been tampered with using Ethereum blockchain.</p>
+  </div>
+</div>
+
+<!-- ── MAIN ─── -->
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('file', this)">📄 Upload Credential File</button>
+    <button class="tab" onclick="switchTab('id', this)">🔍 Search by ID</button>
+    <button class="tab" onclick="switchTab('hash', this)">🔐 Verify by Hash</button>
+  </div>
+
+  <!-- TAB: File Upload -->
+  <div class="tab-panel active" id="panel-file">
+    <div class="card">
+      <div class="card-title">Upload Credential JSON</div>
+      <div class="file-drop" id="fileDropZone">
+        <input type="file" accept=".json" id="credFile" onchange="handleFileSelect(event)">
+        <div class="file-drop-icon">📄</div>
+        <div class="file-drop-title">Drop your credential file here</div>
+        <div class="file-drop-sub">or click to browse · .json only</div>
+      </div>
+      <div id="fileInfo" style="display:none; margin-top:12px; font-size:13px; color:var(--text-mid); text-align:center;"></div>
+      <button class="btn btn-primary" id="verifyFileBtn" onclick="verifyByFile()" disabled>
+        Verify Credential
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB: By ID -->
+  <div class="tab-panel" id="panel-id">
+    <div class="card">
+      <div class="card-title">Search by Credential ID</div>
+      <div class="field">
+        <label>Credential ID</label>
+        <input id="searchId" placeholder="e.g. CERT-2024-001" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" onclick="verifyById()">
+        Look Up Credential
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB: By Hash -->
+  <div class="tab-panel" id="panel-hash">
+    <div class="card">
+      <div class="card-title">Verify by Data Hash</div>
+      <div class="field">
+        <label>SHA-256 / keccak256 Hash</label>
+        <input id="searchHash" placeholder="0x..." autocomplete="off" style="font-family: var(--mono); font-size: 12px;">
+      </div>
+      <button class="btn btn-primary" onclick="verifyByHash()">
+        Verify Hash
+      </button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result"></div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-section">
+    <h2 class="how-title">How Verification Works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Hash Computation</h3>
+        <p>A SHA-256 hash is computed from the credential's JSON data using deterministic sorting.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>On-Chain Lookup</h3>
+        <p>The hash is queried against the Ethereum smart contract registry — immutable and tamper-proof.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Result</h3>
+        <p>If the hash matches an active credential, verification passes. Any modification to the data will fail.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  CredentialChain &nbsp;·&nbsp; Powered by Ethereum + IPFS &nbsp;·&nbsp; Immutable credential verification
+</footer>
+
+<script>
+const API = 'http://localhost:3001/api';
+let selectedFile = null;
+let fileContent  = null;
+
+// ── TABS ──────────────────────────────────
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  clearResult();
+}
+
+// ── FILE HANDLING ─────────────────────────
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      fileContent = JSON.parse(ev.target.result);
+      document.getElementById('fileInfo').style.display = 'block';
+      document.getElementById('fileInfo').textContent = `✓ Loaded: ${file.name}`;
+      document.getElementById('verifyFileBtn').disabled = false;
+    } catch (err) {
+      showError('Invalid JSON file — please upload a valid credential file');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── VERIFY BY FILE ────────────────────────
+async function verifyByFile() {
+  if (!fileContent) return;
+  setLoading('verifyFileBtn');
+  clearResult();
+
+  try {
+    const res = await fetch(`${API}/credential/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credentialData: fileContent })
+    });
+    const data = await res.json();
+    renderResult(data);
+  } catch (err) {
+    showError('Verification failed: ' + err.message);
+  } finally {
+    resetBtn('verifyFileBtn', 'Verify Credential');
+  }
+}
+
+// ── VERIFY BY ID ──────────────────────────
+async function verifyById() {
+  const raw = document.getElementById('searchId').value.trim();
+  if (!raw) { showError('Please enter a credential ID'); return; }
+  const id = raw.toUpperCase();   // ← normalize: "cert-2024-002" → "CERT-2024-002"
+  clearResult();
+
+  try {
+    const res = await fetch(`${API}/credential/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credentialId: id })
+    });
+    const data = await res.json();
+    renderResult(data, id);
+  } catch (err) {
+    showError('Lookup failed: ' + err.message);
+  }
+}
+
+// ── VERIFY BY HASH ────────────────────────
+async function verifyByHash() {
+  const hash = document.getElementById('searchHash').value.trim();
+  if (!hash) { showError('Please enter a hash'); return; }
+  clearResult();
+
+  try {
+    const res = await fetch(`${API}/credential/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataHash: hash })
+    });
+    const data = await res.json();
+    renderResult(data);
+  } catch (err) {
+    showError('Verification failed: ' + err.message);
+  }
+}
+
+// ── RENDER RESULT ─────────────────────────
+function renderResult(data, searchId) {
+  const container = document.getElementById('result');
+
+  // Not found at all
+  if (!data.found || data.status === 'NonExistent') {
+    container.innerHTML = `
+      <div class="result-box invalid">
+        <span class="result-icon">❌</span>
+        <div class="result-status">Not Found</div>
+        <div class="result-sub">
+          No credential matching <strong>${searchId || 'that query'}</strong> exists in the registry.
+          Check that the ID is correct — IDs are stored in uppercase (e.g. CERT-2024-001).
+        </div>
+      </div>`;
+    return;
+  }
+
+  const isRevoked = data.status === 'Revoked';
+  const isValid   = data.valid === true && !isRevoked;
+
+  const statusClass = isRevoked ? 'revoked' : (isValid ? 'valid' : 'invalid');
+  const icon        = isRevoked ? '⚠️' : (isValid ? '✅' : '❌');
+  const statusText  = isRevoked ? 'Credential Revoked'  : (isValid ? 'Credential Valid'   : 'Credential Invalid');
+  const subText     = isRevoked
+    ? 'This credential has been officially revoked by the issuing authority.'
+    : (isValid
+        ? 'This credential is authentic and has not been tampered with.'
+        : 'This credential could not be verified. It may have been modified or is no longer active.');
+
+  const ipfsLink = data.ipfsCid
+    ? `<a href="${data.ipfsUrl || '#'}" target="_blank" rel="noopener">${data.ipfsCid.slice(0,20)}…</a>`
+    : '—';
+
+  const issuedAt = data.issuedAt
+    ? new Date(data.issuedAt).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
+    : '—';
+
+  container.innerHTML = `
+    <div class="result-box ${statusClass}">
+      <span class="result-icon">${icon}</span>
+      <div class="result-status">${statusText}</div>
+      <div class="result-sub">${subText}</div>
+      <div class="result-divider"></div>
+      <div class="result-meta">
+        <div class="meta-item">
+          <div class="meta-label">Status</div>
+          <div class="meta-value">${data.status || '—'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Issue Date</div>
+          <div class="meta-value">${issuedAt}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Issuer Address</div>
+          <div class="meta-value">${data.issuer ? data.issuer.slice(0,10) + '…' + data.issuer.slice(-8) : '—'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">IPFS Record</div>
+          <div class="meta-value">${ipfsLink}</div>
+        </div>
+        <div class="meta-item full">
+          <div class="meta-label">On-Chain Hash</div>
+          <div class="meta-value">${data.dataHash || data.computedHash || '—'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── HELPERS ───────────────────────────────
+function clearResult() {
+  document.getElementById('result').innerHTML = '';
+}
+
+function showError(msg) {
+  document.getElementById('result').innerHTML = `
+    <div class="result-box invalid">
+      <span class="result-icon">⚠️</span>
+      <div class="result-status">Error</div>
+      <div class="result-sub">${msg}</div>
+    </div>`;
+}
+
+function setLoading(btnId) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Verifying…';
+}
+
+function resetBtn(btnId, label) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = false;
+  btn.textContent = label;
+}
+
+// ── DRAG & DROP ───────────────────────────
+const dropZone = document.getElementById('fileDropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const ev = { target: { files: [file] } };
+    handleFileSelect(ev);
+  }
+});
+
+// Enter key on ID field
+document.getElementById('searchId').addEventListener('keydown', e => {
+  if (e.key === 'Enter') verifyById();
+});
+
+document.getElementById('searchHash').addEventListener('keydown', e => {
+  if (e.key === 'Enter') verifyByHash();
+});
+</script>
+</body>
+</html>

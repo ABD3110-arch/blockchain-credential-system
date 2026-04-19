@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CredentialChain — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── DESIGN SYSTEM ─────────────────────────── */
+    :root {
+      --bg:         #0a0a0f;
+      --bg-card:    #111118;
+      --bg-input:   #16161f;
+      --border:     #2a2a3e;
+      --border-hi:  #4a4a6e;
+      --accent:     #7c3aed;
+      --accent-hi:  #a855f7;
+      --accent-glow:#7c3aed44;
+      --green:      #10b981;
+      --green-glow: #10b98130;
+      --red:        #ef4444;
+      --red-glow:   #ef444430;
+      --amber:      #f59e0b;
+      --text:       #e2e8f0;
+      --text-dim:   #64748b;
+      --text-faint: #334155;
+      --mono:       'Space Mono', monospace;
+      --sans:       'Syne', sans-serif;
+      --radius:     8px;
+      --transition: 0.18s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── HEADER ─────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,15,0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .logo span { color: var(--accent-hi); }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-badge.online  { border-color: var(--green); color: var(--green); }
+    .status-badge.offline { border-color: var(--red);   color: var(--red);   }
+    .status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .admin-addr {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 4px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* ── SIDEBAR ─────────────────────────────────── */
+    nav {
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      margin-bottom: 28px;
+    }
+
+    .nav-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      padding: 0 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all var(--transition);
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .nav-item.active {
+      background: var(--accent-glow);
+      color: var(--accent-hi);
+      border-color: var(--accent);
+    }
+
+    .nav-icon { font-size: 16px; min-width: 20px; text-align: center; }
+
+    .stats-mini {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 16px;
+    }
+
+    .stats-mini h4 {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 12px;
+    }
+
+    .stat-val {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--accent-hi);
+    }
+
+    /* ── MAIN CONTENT ────────────────────────────── */
+    main {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .page-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-header h1 {
+      font-family: var(--sans);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .page-header p {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* ── CARDS ───────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::before {
+      content: '';
+      display: block;
+      width: 3px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* ── FORM ────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-grid.one-col { grid-template-columns: 1fr; }
+    .form-grid.three-col { grid-template-columns: 1fr 1fr 1fr; }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.span-2 { grid-column: span 2; }
+
+    label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+
+    input, textarea, select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      transition: all var(--transition);
+      outline: none;
+      width: 100%;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: var(--text-faint);
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── BUTTONS ─────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: all var(--transition);
+      border: none;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hi);
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+
+    .btn-danger:hover {
+      background: var(--red-glow);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--border-hi);
+      color: var(--text);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* ── FILE DROP ───────────────────────────────── */
+    .file-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+    }
+
+    .file-drop:hover, .file-drop.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .file-drop input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-drop-icon { font-size: 32px; margin-bottom: 10px; }
+    .file-drop-text { font-size: 13px; color: var(--text-dim); }
+    .file-drop-text strong { color: var(--accent-hi); }
+
+    /* ── RESPONSE / LOG ──────────────────────────── */
+    .log {
+      background: #060609;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.8;
+      max-height: 280px;
+      overflow-y: auto;
+      margin-top: 16px;
+    }
+
+    .log:empty::before {
+      content: '// output will appear here';
+      color: var(--text-faint);
+    }
+
+    .log-line { padding: 1px 0; }
+    .log-line.success { color: var(--green); }
+    .log-line.error   { color: var(--red); }
+    .log-line.info    { color: var(--accent-hi); }
+    .log-line.dim     { color: var(--text-faint); }
+
+    /* ── PROGRESS BAR ────────────────────────────── */
+    .progress-wrap {
+      height: 4px;
+      background: var(--bg-input);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* ── TABLE ───────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    thead th {
+      background: var(--bg-input);
+      padding: 10px 14px;
+      text-align: left;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-input); }
+
+    tbody td {
+      padding: 10px 14px;
+      color: var(--text-dim);
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .badge-active  { background: var(--green-glow);  color: var(--green);  border: 1px solid var(--green); }
+    .badge-revoked { background: var(--red-glow);    color: var(--red);    border: 1px solid var(--red); }
+
+    /* ── TOAST ───────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      min-width: 280px;
+      animation: slideIn 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toast.success { border-color: var(--green); }
+    .toast.error   { border-color: var(--red);   }
+
+    @keyframes slideIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* ── DASHBOARD METRICS ───────────────────────── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .metric-card.m-total::after  { background: var(--accent); }
+    .metric-card.m-active::after { background: var(--green); }
+    .metric-card.m-revoked::after { background: var(--red); }
+
+    .metric-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-family: var(--mono);
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    .m-total  .metric-value { color: var(--accent-hi); }
+    .m-active .metric-value { color: var(--green); }
+    .m-revoked .metric-value { color: var(--red); }
+
+    /* ── SPINNER ─────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent-hi);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SCROLLBAR ───────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    .tx-hash {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent-hi);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⛓</div>
+    Credential<span>Chain</span> ·&nbsp;Admin
+  </div>
+  <div class="header-right">
+    <span class="status-badge offline" id="statusBadge">OFFLINE</span>
+    <span class="admin-addr" id="adminAddr">0x···</span>
+  </div>
+</header>
+
+<!-- ── LAYOUT ─────────────────────────── -->
+<div class="layout">
+
+  <!-- ── SIDEBAR ───────────────────────── -->
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard', this)">
+        <span class="nav-icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="window.location.href='records.html'">
+        <span class="nav-icon">☰</span> All Records
+      </div>
+      <div class="nav-item" data-page="add" onclick="showPage('add', this)">
+        <span class="nav-icon">＋</span> Add Credential
+      </div>
+      <div class="nav-item" data-page="update" onclick="showPage('update', this)">
+        <span class="nav-icon">↺</span> Update
+      </div>
+      <div class="nav-item" data-page="revoke" onclick="showPage('revoke', this)">
+        <span class="nav-icon">✕</span> Revoke
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Bulk</div>
+      <div class="nav-item" data-page="csv" onclick="showPage('csv', this)">
+        <span class="nav-icon">⇧</span> CSV Upload
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Tools</div>
+      <div class="nav-item" onclick="window.location.href='latency.html'">
+        <span class="nav-icon">⚡</span> Latency
+      </div>
+      <div class="nav-item" onclick="window.open('verify.html','_blank')">
+        <span class="nav-icon">✓</span> Verify (Public)
+      </div>
+    </div>
+
+    <div class="stats-mini">
+      <h4>Registry Stats</h4>
+      <div class="stat-row">
+        <span>Total</span>
+        <span class="stat-val" id="statTotal">–</span>
+      </div>
+      <div class="stat-row">
+        <span>Active</span>
+        <span class="stat-val" id="statActive">–</span>
+      </div>
+      <div class="stat-row">
+        <span>Revoked</span>
+        <span class="stat-val" id="statRevoked">–</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ───────────────────────────── -->
+  <main>
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>Registry Overview</h1>
+        <p>Blockchain-backed credential registry status and recent activity</p>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card m-total">
+          <div class="metric-label">Total Issued</div>
+          <div class="metric-value" id="metricTotal">–</div>
+        </div>
+        <div class="metric-card m-active">
+          <div class="metric-label">Active</div>
+          <div class="metric-value" id="metricActive">–</div>
+        </div>
+        <div class="metric-card m-revoked">
+          <div class="metric-label">Revoked</div>
+          <div class="metric-value" id="metricRevoked">–</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Network Status</div>
+        <div class="form-grid three-col">
+          <div class="field">
+            <label>Blockchain</label>
+            <input readonly id="netBlockchain" value="Ethereum (Ganache)">
+          </div>
+          <div class="field">
+            <label>Block Number</label>
+            <input readonly id="netBlock" value="…">
+          </div>
+          <div class="field">
+            <label>Contract Address</label>
+            <input readonly id="netContract" value="…">
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" onclick="loadStats()">↺ Refresh Stats</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD CREDENTIAL PAGE -->
+    <div class="page" id="page-add">
+      <div class="page-header">
+        <h1>Add Credential</h1>
+        <p>Issue a new credential — data will be stored on IPFS and hash anchored on-chain</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Credential Details</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Credential ID *</label>
+            <input id="addId" placeholder="CERT-2024-001" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Issue Date *</label>
+            <input type="date" id="addDate">
+          </div>
+          <div class="field">
+            <label>Recipient Name *</label>
+            <input id="addName" placeholder="Full name">
+          </div>
+          <div class="field">
+            <label>Issuer Name *</label>
+            <input id="addIssuer" placeholder="Institution / Organization">
+          </div>
+          <div class="field">
+            <label>Course / Program</label>
+            <input id="addCourse" placeholder="e.g. Blockchain Fundamentals">
+          </div>
+          <div class="field">
+            <label>Grade / Score</label>
+            <input id="addGrade" placeholder="e.g. A+, 95%, Pass">
+          </div>
+          <div class="field span-2">
+            <label>Remarks / Notes</label>
+            <textarea id="addRemarks" placeholder="Additional metadata, remarks, or notes..."></textarea>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addCredential()">
+            <span>⛓ Anchor on Blockchain</span>
+          </button>
+          <button class="btn btn-ghost" onclick="clearForm('add')">Clear</button>
+        </div>
+        <div id="addLog" class="log"></div>
+      </div>
+    </div>
+
+    <!-- UPDATE PAGE -->
+    <div class="page" id="page-update">
+      <div class="page-header">
+        <h1>Update Credential</h1>
+        <p>Update an existing credential — creates a new IPFS record and updates the on-chain hash</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Update Fields</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Credential ID *</label>
+            <input id="updId" placeholder="CERT-2024-001">
+          </div>
+          <div class="field">
+            <label>Issue Date</label>
+            <input type="date" id="updDate">
+          </div>
+          <div class="field">
+            <label>Recipient Name</label>
+            <input id="updName" placeholder="Full name">
+          </div>
+          <div class="field">
+            <label>Issuer Name</label>
+            <input id="updIssuer" placeholder="Institution">
+          </div>
+          <div class="field">
+            <label>Course / Program</label>
+            <input id="updCourse" placeholder="Course name">
+          </div>
+          <div class="field">
+            <label>Grade / Score</label>
+            <input id="updGrade" placeholder="Grade">
+          </div>
+          <div class="field span-2">
+            <label>Remarks</label>
+            <textarea id="updRemarks" placeholder="Updated remarks..."></textarea>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="updateCredential()">↺ Update Credential</button>
+          <button class="btn btn-ghost" onclick="clearForm('upd')">Clear</button>
+        </div>
+        <div id="updLog" class="log"></div>
+      </div>
+    </div>
+
+    <!-- REVOKE PAGE -->
+    <div class="page" id="page-revoke">
+      <div class="page-header">
+        <h1>Revoke Credential</h1>
+        <p>Permanently revoke a credential — this action is irreversible on-chain</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Revoke by ID</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Credential ID *</label>
+            <input id="revokeId" placeholder="CERT-2024-001">
+          </div>
+          <div class="field">
+            <label>Confirm by re-typing ID</label>
+            <input id="revokeConfirm" placeholder="Type ID again to confirm">
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-danger" onclick="revokeCredential()">✕ Revoke Credential</button>
+        </div>
+        <div id="revokeLog" class="log"></div>
+      </div>
+    </div>
+
+    <!-- CSV UPLOAD PAGE -->
+    <div class="page" id="page-csv">
+      <div class="page-header">
+        <h1>Bulk CSV Upload</h1>
+        <p>Upload a CSV file to batch-issue credentials to the blockchain</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">CSV Format</div>
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); background: #060609; padding: 14px; border-radius: 6px; border: 1px solid var(--border); line-height: 2;">
+          <span style="color: var(--green);">credentialId</span>,<span style="color: var(--accent-hi);">userName</span>,<span style="color: var(--amber);">issuerName</span>,<span style="color: var(--green);">issueDate</span>,course,grade,remarks<br>
+          CERT-001,Alice Johnson,MIT,2024-01-15,Blockchain Dev,A,With Distinction
+        </div>
+        <a href="#" onclick="downloadSample()" style="font-family: var(--mono); font-size: 11px; color: var(--accent-hi); text-decoration: none; display: inline-block; margin-top: 10px;">⇩ Download Sample CSV</a>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Upload File</div>
+        <div class="file-drop" id="csvDropZone">
+          <input type="file" accept=".csv" id="csvFile" onchange="handleCsvSelect(event)">
+          <div class="file-drop-icon">📋</div>
+          <div class="file-drop-text">
+            Drop your CSV here or <strong>click to browse</strong><br>
+            <small style="font-size: 11px; color: var(--text-faint); margin-top: 4px; display: block;">Max 5MB · .csv only</small>
+          </div>
+        </div>
+        <div id="csvFileInfo" style="display:none; margin-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--text-dim);"></div>
+        <div class="progress-wrap" id="csvProgressWrap" style="display:none;">
+          <div class="progress-bar" id="csvProgress"></div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="uploadCSV()" id="csvUploadBtn" disabled>⇧ Upload &amp; Anchor</button>
+        </div>
+        <div id="csvLog" class="log"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────
+const API = 'http://localhost:3001/api';
+
+// ── STATE ─────────────────────────────────
+let selectedCsvFile = null;
+
+// ── INIT ──────────────────────────────────
+async function init() {
+  await loadStats();
+  setInterval(loadStats, 15000);
+}
+
+async function loadStats() {
+  try {
+    const [health, stats] = await Promise.all([
+      fetch(`${API}/health`).then(r => r.json()),
+      fetch(`${API}/stats`).then(r => r.json())
+    ]);
+
+    // Status badge
+    const badge = document.getElementById('statusBadge');
+    if (health.status === 'ok' && health.blockchain === 'connected') {
+      badge.className = 'status-badge online';
+      badge.textContent = 'ONLINE';
+    } else {
+      badge.className = 'status-badge offline';
+      badge.textContent = 'OFFLINE';
+    }
+
+    document.getElementById('adminAddr').textContent =
+      health.contract ? health.contract.slice(0,8) + '…' + health.contract.slice(-6) : '0x···';
+
+    document.getElementById('netBlock').value    = health.blockNumber || '–';
+    document.getElementById('netContract').value = health.contract    || 'Not set';
+
+    // Metrics
+    document.getElementById('metricTotal').textContent   = stats.total   || 0;
+    document.getElementById('metricActive').textContent  = stats.active  || 0;
+    document.getElementById('metricRevoked').textContent = stats.revoked || 0;
+
+    document.getElementById('statTotal').textContent   = stats.total   || 0;
+    document.getElementById('statActive').textContent  = stats.active  || 0;
+    document.getElementById('statRevoked').textContent = stats.revoked || 0;
+
+  } catch (e) {
+    document.getElementById('statusBadge').className = 'status-badge offline';
+    document.getElementById('statusBadge').textContent = 'OFFLINE';
+  }
+}
+
+// ── NAVIGATION ────────────────────────────
+function showPage(pageId, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── LOG HELPERS ───────────────────────────
+function log(containerId, message, type = 'info') {
+  const container = document.getElementById(containerId);
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  const timestamp = new Date().toTimeString().slice(0,8);
+  line.textContent = `[${timestamp}] ${message}`;
+  container.appendChild(line);
+  container.scrollTop = container.scrollHeight;
+}
+
+function clearLog(id) {
+  document.getElementById(id).innerHTML = '';
+}
+
+// ── TOAST ─────────────────────────────────
+function toast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span>${message}`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 4500);
+}
+
+// ── ADD CREDENTIAL ────────────────────────
+async function addCredential() {
+  clearLog('addLog');
+  const id      = document.getElementById('addId').value.trim();
+  const name    = document.getElementById('addName').value.trim();
+  const issuer  = document.getElementById('addIssuer').value.trim();
+  const date    = document.getElementById('addDate').value;
+  const course  = document.getElementById('addCourse').value.trim();
+  const grade   = document.getElementById('addGrade').value.trim();
+  const remarks = document.getElementById('addRemarks').value.trim();
+
+  if (!id || !name || !issuer || !date) {
+    toast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  log('addLog', `Preparing credential for: ${name} (${id})`);
+  log('addLog', 'Uploading to IPFS...', 'dim');
+
+  try {
+    const res = await fetch(`${API}/credential/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        credentialId: id,
+        userName:     name,
+        issuerName:   issuer,
+        issueDate:    date,
+        metadata:     { course, grade, remarks }
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+
+    log('addLog', `✓ IPFS CID: ${data.ipfsCid}`, 'success');
+    log('addLog', `✓ Hash: ${data.dataHash.slice(0,20)}…`, 'success');
+    log('addLog', `✓ Tx: ${data.txHash}`, 'success');
+    log('addLog', `✓ Gas used: ${data.gasUsed}`, 'dim');
+
+    toast(`Credential ${id} anchored on-chain!`, 'success');
+    loadStats();
+
+  } catch (err) {
+    log('addLog', `✗ Error: ${err.message}`, 'error');
+    toast(err.message, 'error');
+  }
+}
+
+// ── UPDATE CREDENTIAL ─────────────────────
+async function updateCredential() {
+  clearLog('updLog');
+  const id      = document.getElementById('updId').value.trim();
+  const name    = document.getElementById('updName').value.trim();
+  const issuer  = document.getElementById('updIssuer').value.trim();
+  const date    = document.getElementById('updDate').value;
+  const course  = document.getElementById('updCourse').value.trim();
+  const grade   = document.getElementById('updGrade').value.trim();
+  const remarks = document.getElementById('updRemarks').value.trim();
+
+  if (!id) { toast('Credential ID is required', 'error'); return; }
+
+  log('updLog', `Updating credential: ${id}`);
+  log('updLog', 'Uploading updated data to IPFS...', 'dim');
+
+  try {
+    const res = await fetch(`${API}/credential/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        credentialId: id,
+        userName:     name,
+        issuerName:   issuer,
+        issueDate:    date,
+        metadata:     { course, grade, remarks }
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    log('updLog', `✓ Updated IPFS CID: ${data.ipfsCid}`, 'success');
+    log('updLog', `✓ New Hash: ${data.dataHash.slice(0,20)}…`, 'success');
+    log('updLog', `✓ Tx: ${data.txHash}`, 'success');
+    toast(`Credential ${id} updated!`, 'success');
+    loadStats();
+
+  } catch (err) {
+    log('updLog', `✗ Error: ${err.message}`, 'error');
+    toast(err.message, 'error');
+  }
+}
+
+// ── REVOKE CREDENTIAL ─────────────────────
+async function revokeCredential() {
+  const id      = document.getElementById('revokeId').value.trim();
+  const confirm = document.getElementById('revokeConfirm').value.trim();
+
+  if (!id) { toast('Credential ID required', 'error'); return; }
+  if (id !== confirm) { toast('IDs do not match — please re-type to confirm', 'error'); return; }
+
+  clearLog('revokeLog');
+  log('revokeLog', `Revoking credential: ${id}...`);
+
+  try {
+    const res = await fetch(`${API}/credential/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credentialId: id })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    log('revokeLog', `✓ Credential ${id} revoked`, 'success');
+    log('revokeLog', `✓ Tx: ${data.txHash}`, 'success');
+    toast(`Credential ${id} has been revoked`, 'success');
+
+    document.getElementById('revokeId').value = '';
+    document.getElementById('revokeConfirm').value = '';
+    loadStats();
+
+  } catch (err) {
+    log('revokeLog', `✗ Error: ${err.message}`, 'error');
+    toast(err.message, 'error');
+  }
+}
+
+// ── CSV UPLOAD ────────────────────────────
+function handleCsvSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  selectedCsvFile = file;
+  document.getElementById('csvFileInfo').style.display = 'block';
+  document.getElementById('csvFileInfo').textContent =
+    `📋 ${file.name}  ·  ${(file.size / 1024).toFixed(1)} KB`;
+  document.getElementById('csvUploadBtn').disabled = false;
+}
+
+async function uploadCSV() {
+  if (!selectedCsvFile) { toast('No file selected', 'error'); return; }
+
+  clearLog('csvLog');
+  document.getElementById('csvProgressWrap').style.display = 'block';
+  document.getElementById('csvProgress').style.width = '10%';
+  document.getElementById('csvUploadBtn').disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', selectedCsvFile);
+
+  log('csvLog', `Uploading ${selectedCsvFile.name}...`);
+
+  try {
+    document.getElementById('csvProgress').style.width = '30%';
+
+    const res = await fetch(`${API}/upload/csv`, {
+      method: 'POST',
+      body: formData
+    });
+
+    document.getElementById('csvProgress').style.width = '80%';
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error);
+
+    document.getElementById('csvProgress').style.width = '100%';
+
+    log('csvLog', `Processed ${data.processed} records`, 'info');
+    log('csvLog', `✓ Success: ${data.success}`, 'success');
+
+    if (data.failed > 0) {
+      log('csvLog', `✗ Failed: ${data.failed}`, 'error');
+    }
+
+    data.results.forEach(r => {
+      log('csvLog', `  ✓ Row ${r.row}: ${r.id} → ${r.txHash.slice(0,16)}…`, 'success');
+    });
+
+    data.errors.forEach(e => {
+      log('csvLog', `  ✗ Row ${e.row}: ${e.id} — ${e.error}`, 'error');
+    });
+
+    toast(`Anchored ${data.success}/${data.processed} credentials`, 'success');
+    loadStats();
+
+  } catch (err) {
+    log('csvLog', `✗ Error: ${err.message}`, 'error');
+    toast(err.message, 'error');
+  } finally {
+    document.getElementById('csvUploadBtn').disabled = false;
+  }
+}
+
+function downloadSample() {
+  const csv = `credentialId,userName,issuerName,issueDate,course,grade,remarks
+CERT-2024-001,Alice Johnson,MIT OpenCourseWare,2024-01-15,Blockchain Fundamentals,A,With Distinction
+CERT-2024-002,Bob Smith,Stanford Online,2024-02-20,Cryptography & Security,B+,Passed
+CERT-2024-003,Carol Williams,Harvard Extension,2024-03-10,Smart Contract Dev,A+,Summa Cum Laude`;
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'sample-credentials.csv';
+  a.click();
+}
+
+// ── DRAG/DROP ─────────────────────────────
+const dropZone = document.getElementById('csvDropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) {
+    selectedCsvFile = file;
+    document.getElementById('csvFileInfo').style.display = 'block';
+    document.getElementById('csvFileInfo').textContent = `📋 ${file.name}  ·  ${(file.size/1024).toFixed(1)} KB`;
+    document.getElementById('csvUploadBtn').disabled = false;
+  }
+});
+
+// ── FORM CLEAR ────────────────────────────
+function clearForm(prefix) {
+  ['Id','Name','Issuer','Date','Course','Grade','Remarks'].forEach(f => {
+    const el = document.getElementById(prefix + f);
+    if (el) el.value = '';
+  });
+}
+
+// ── START ─────────────────────────────────
+init();
+</script>
+</body>
+</html>

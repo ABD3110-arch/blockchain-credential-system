@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CredentialChain — Latency Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --bg-card:     #111118;
+      --bg-input:    #16161f;
+      --border:      #2a2a3e;
+      --border-hi:   #4a4a6e;
+      --accent:      #7c3aed;
+      --accent-hi:   #a855f7;
+      --accent-glow: #7c3aed33;
+      --green:       #10b981;
+      --green-glow:  #10b98120;
+      --red:         #ef4444;
+      --red-glow:    #ef444420;
+      --amber:       #f59e0b;
+      --amber-glow:  #f59e0b20;
+      --blue:        #3b82f6;
+      --blue-glow:   #3b82f620;
+      --cyan:        #06b6d4;
+      --text:        #e2e8f0;
+      --text-dim:    #64748b;
+      --text-faint:  #1e293b;
+      --mono:        'Space Mono', monospace;
+      --sans:        'Syne', sans-serif;
+      --radius:      8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+      pointer-events: none; z-index: 999;
+    }
+
+    /* ── HEADER ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(10,10,15,0.96);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .logo-icon {
+      width: 26px; height: 26px; background: var(--accent);
+      border-radius: 5px; display: flex; align-items: center;
+      justify-content: center; font-size: 13px;
+    }
+
+    .logo span { color: var(--accent-hi); }
+
+    .header-right { display: flex; gap: 10px; align-items: center; }
+
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .live-label { font-family: var(--mono); font-size: 11px; color: var(--green); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--radius);
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      cursor: pointer; transition: all 0.15s; border: none;
+    }
+
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+    .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+    .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+    .btn-danger:hover { background: var(--red-glow); }
+    .btn-export { background: transparent; border: 1px solid var(--green); color: var(--green); }
+    .btn-export:hover { background: var(--green-glow); }
+
+    /* ── MAIN ── */
+    main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 3px; }
+    .page-header p { color: var(--text-dim); font-size: 13px; }
+
+    /* ── PHASE CARDS ── */
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .phase-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phase-card::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .phase-card.ph-hash  { } .phase-card.ph-hash::after  { background: var(--amber); }
+    .phase-card.ph-ipfs  { } .phase-card.ph-ipfs::after  { background: var(--blue); }
+    .phase-card.ph-prep  { } .phase-card.ph-prep::after  { background: var(--cyan); }
+    .phase-card.ph-mine  { } .phase-card.ph-mine::after  { background: var(--green); }
+    .phase-card.ph-total { } .phase-card.ph-total::after { background: var(--accent-hi); }
+
+    .phase-label {
+      font-family: var(--mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--text-dim); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .phase-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .ph-hash  .phase-dot { background: var(--amber); }
+    .ph-ipfs  .phase-dot { background: var(--blue); }
+    .ph-prep  .phase-dot { background: var(--cyan); }
+    .ph-mine  .phase-dot { background: var(--green); }
+    .ph-total .phase-dot { background: var(--accent-hi); }
+
+    .phase-avg {
+      font-family: var(--mono); font-size: 28px; font-weight: 700;
+      line-height: 1; letter-spacing: -1px; margin-bottom: 10px;
+    }
+
+    .ph-hash  .phase-avg { color: var(--amber); }
+    .ph-ipfs  .phase-avg { color: var(--blue); }
+    .ph-prep  .phase-avg { color: var(--cyan); }
+    .ph-mine  .phase-avg { color: var(--green); }
+    .ph-total .phase-avg { color: var(--accent-hi); }
+
+    .phase-unit { font-size: 12px; font-weight: 400; opacity: 0.6; }
+
+    .phase-meta {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4px; font-family: var(--mono); font-size: 10px;
+    }
+
+    .phase-meta-item { }
+    .phase-meta-item span { color: var(--text-dim); }
+    .phase-meta-item strong { color: var(--text); }
+
+    /* ── TWO COLUMN LAYOUT ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .card-title {
+      font-family: var(--mono); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-dim); display: flex; align-items: center; gap: 8px;
+    }
+
+    .card-title::before {
+      content: ''; display: block; width: 3px; height: 11px;
+      background: var(--accent); border-radius: 2px;
+    }
+
+    .card-body { padding: 18px; }
+
+    /* ── BAR CHART ── */
+    .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+
+    .bar-row { display: flex; align-items: center; gap: 10px; }
+    .bar-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); width: 60px; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 18px; background: var(--bg-input); border-radius: 3px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .bar-val { font-family: var(--mono); font-size: 10px; color: var(--text-dim); width: 55px; flex-shrink: 0; }
+
+    /* ── LIVE SPARKLINE CHART ── */
+    .sparkline-wrap { height: 120px; position: relative; }
+    canvas { width: 100%; height: 100%; }
+
+    /* ── STATS TABLE ── */
+    .stats-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+    .stats-table th {
+      padding: 8px 12px; text-align: left;
+      color: var(--text-dim); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-input);
+    }
+    .stats-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+    .stats-table tr:last-child td { border-bottom: none; }
+    .stats-table tr:hover td { background: rgba(124,58,237,0.04); }
+    .stats-table td:first-child { color: var(--text); }
+    .stats-table .hi { color: var(--green); font-weight: 700; }
+    .stats-table .lo { color: var(--red); font-weight: 700; }
+
+    /* ── TX LOG TABLE ── */
+    .log-toolbar {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .log-toolbar input {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 10px;
+      color: var(--text); font-family: var(--mono); font-size: 11px;
+      outline: none; width: 240px;
+    }
+
+    .log-toolbar input:focus { border-color: var(--accent); }
+
+    .filter-pill {
+      padding: 4px 10px; border-radius: 20px;
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      cursor: pointer; border: 1px solid var(--border);
+      color: var(--text-dim); background: transparent;
+      transition: all 0.13s;
+    }
+
+    .filter-pill:hover { border-color: var(--border-hi); color: var(--text); }
+    .filter-pill.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent-hi); }
+
+    .log-count { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-left: auto; }
+
+    .tx-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+    .tx-table th {
+      padding: 9px 12px; text-align: left; white-space: nowrap;
+      color: var(--text-dim); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-input);
+    }
+    .tx-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); white-space: nowrap; }
+    .tx-table tr:last-child td { border-bottom: none; }
+    .tx-table tr:hover td { background: rgba(124,58,237,0.04); }
+
+    .op-badge {
+      padding: 2px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .op-add    { background: var(--green-glow); color: var(--green); }
+    .op-update { background: var(--amber-glow);  color: var(--amber); }
+    .op-revoke { background: var(--red-glow);    color: var(--red); }
+
+    .ms-val { color: var(--text); font-weight: 700; }
+    .ms-slow { color: var(--amber); }
+    .ms-fast { color: var(--green); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      padding: 48px 24px; text-align: center; color: var(--text-dim);
+    }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px; z-index: 500;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 11px 16px;
+      font-family: var(--mono); font-size: 11px; display: none;
+    }
+    #toast.show { display: flex; align-items: center; gap: 8px; }
+    #toast.success { border-color: var(--green); color: var(--green); }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+    .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .animate-in { animation: fadeIn 0.25s ease; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⛓</div>
+    Credential<span>Chain</span> · Latency
+  </div>
+  <div class="header-right">
+    <div class="live-dot"></div>
+    <span class="live-label">LIVE</span>
+    <button class="btn btn-export" onclick="exportCSV()">⇩ Export</button>
+    <button class="btn btn-danger" onclick="clearLog()">✕ Clear Log</button>
+    <button class="btn btn-ghost" onclick="window.location.href='index.html'">← Dashboard</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Transaction Latency Analytics</h1>
+    <p>Real-time breakdown of every blockchain operation — hash · IPFS · sign · mine · end-to-end</p>
+  </div>
+
+  <!-- Phase Cards -->
+  <div class="phase-grid" id="phaseCards">
+    <div class="phase-card ph-hash">
+      <div class="phase-label"><div class="phase-dot"></div>Hash (SHA-256)</div>
+      <div class="phase-avg" id="avg-hash">–<span class="phase-unit">ms</span></div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><span>min </span><strong id="min-hash">–</strong></div>
+        <div class="phase-meta-item"><span>max </span><strong id="max-hash">–</strong></div>
+        <div class="phase-meta-item"><span>p95 </span><strong id="p95-hash">–</strong></div>
+        <div class="phase-meta-item"><span>p99 </span><strong id="p99-hash">–</strong></div>
+      </div>
+    </div>
+    <div class="phase-card ph-ipfs">
+      <div class="phase-label"><div class="phase-dot"></div>IPFS Upload</div>
+      <div class="phase-avg" id="avg-ipfs">–<span class="phase-unit">ms</span></div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><span>min </span><strong id="min-ipfs">–</strong></div>
+        <div class="phase-meta-item"><span>max </span><strong id="max-ipfs">–</strong></div>
+        <div class="phase-meta-item"><span>p95 </span><strong id="p95-ipfs">–</strong></div>
+        <div class="phase-meta-item"><span>p99 </span><strong id="p99-ipfs">–</strong></div>
+      </div>
+    </div>
+    <div class="phase-card ph-prep">
+      <div class="phase-label"><div class="phase-dot"></div>Tx Prep + Sign</div>
+      <div class="phase-avg" id="avg-prep">–<span class="phase-unit">ms</span></div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><span>min </span><strong id="min-prep">–</strong></div>
+        <div class="phase-meta-item"><span>max </span><strong id="max-prep">–</strong></div>
+        <div class="phase-meta-item"><span>p95 </span><strong id="p95-prep">–</strong></div>
+        <div class="phase-meta-item"><span>p99 </span><strong id="p99-prep">–</strong></div>
+      </div>
+    </div>
+    <div class="phase-card ph-mine">
+      <div class="phase-label"><div class="phase-dot"></div>Mining (Confirm)</div>
+      <div class="phase-avg" id="avg-mine">–<span class="phase-unit">ms</span></div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><span>min </span><strong id="min-mine">–</strong></div>
+        <div class="phase-meta-item"><span>max </span><strong id="max-mine">–</strong></div>
+        <div class="phase-meta-item"><span>p95 </span><strong id="p95-mine">–</strong></div>
+        <div class="phase-meta-item"><span>p99 </span><strong id="p99-mine">–</strong></div>
+      </div>
+    </div>
+    <div class="phase-card ph-total">
+      <div class="phase-label"><div class="phase-dot"></div>Total End-to-End</div>
+      <div class="phase-avg" id="avg-total">–<span class="phase-unit">ms</span></div>
+      <div class="phase-meta">
+        <div class="phase-meta-item"><span>min </span><strong id="min-total">–</strong></div>
+        <div class="phase-meta-item"><span>max </span><strong id="max-total">–</strong></div>
+        <div class="phase-meta-item"><span>p95 </span><strong id="p95-total">–</strong></div>
+        <div class="phase-meta-item"><span>p99 </span><strong id="p99-total">–</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="two-col">
+
+    <!-- Stacked bar breakdown -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Phase Breakdown (avg ms)</div>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="breakdownTotal">–</span>
+      </div>
+      <div class="card-body">
+        <div class="bar-chart" id="barChart">
+          <div class="bar-row">
+            <div class="bar-label">Hash</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-hash" style="background:var(--amber);width:0%"></div></div>
+            <div class="bar-val" id="bval-hash">–</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">IPFS</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-ipfs" style="background:var(--blue);width:0%"></div></div>
+            <div class="bar-val" id="bval-ipfs">–</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Prep</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-prep" style="background:var(--cyan);width:0%"></div></div>
+            <div class="bar-val" id="bval-prep">–</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Sign</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-sign" style="background:#8b5cf6;width:0%"></div></div>
+            <div class="bar-val" id="bval-sign">–</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Mine</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-mine" style="background:var(--green);width:0%"></div></div>
+            <div class="bar-val" id="bval-mine">–</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sparkline — total latency over time -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Total Latency Over Time</div>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">last 50 txns</span>
+      </div>
+      <div class="card-body">
+        <div class="sparkline-wrap">
+          <canvas id="sparklineCanvas"></canvas>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim)">
+          <span>■ <span style="color:var(--accent-hi)">Total</span></span>
+          <span>■ <span style="color:var(--blue)">IPFS</span></span>
+          <span>■ <span style="color:var(--green)">Mine</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Per-Operation Stats -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-title">Per-Operation Averages (ms)</div>
+    </div>
+    <div class="table-wrap">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>Count</th>
+            <th>Hash avg</th>
+            <th>IPFS avg</th>
+            <th>Prep avg</th>
+            <th>Sign avg</th>
+            <th>Mine avg</th>
+            <th>Total avg</th>
+            <th>Total p95</th>
+            <th>Total p99</th>
+          </tr>
+        </thead>
+        <tbody id="statsBody">
+          <tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📊</div><p>No transactions recorded yet</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Transaction Log -->
+  <div class="card">
+    <div class="log-toolbar">
+      <input id="logSearch" placeholder="Search tx hash, operation…" oninput="renderLog()">
+      <button class="filter-pill active" data-op="all"    onclick="setOpFilter('all',this)">All</button>
+      <button class="filter-pill"        data-op="add"    onclick="setOpFilter('add',this)">Add</button>
+      <button class="filter-pill"        data-op="update" onclick="setOpFilter('update',this)">Update</button>
+      <button class="filter-pill"        data-op="revoke" onclick="setOpFilter('revoke',this)">Revoke</button>
+      <span class="log-count" id="logCount">0 transactions</span>
+    </div>
+    <div class="table-wrap">
+      <table class="tx-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Operation</th>
+            <th>Timestamp</th>
+            <th>Hash ms</th>
+            <th>IPFS ms</th>
+            <th>Prep ms</th>
+            <th>Sign ms</th>
+            <th>Mine ms</th>
+            <th>Total ms</th>
+            <th>Gas Used</th>
+            <th>Block</th>
+            <th>Tx Hash</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="12"><div class="empty-state"><div class="empty-icon">⏱</div><p>Transactions will appear here after you add, update, or revoke credentials</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:3001/api';
+
+let latencyData = null;
+let opFilter    = 'all';
+
+// ── INIT + AUTO-REFRESH ───────────────────
+async function refresh() {
+  try {
+    const res  = await fetch(`${API}/latency?limit=500`);
+    latencyData = await res.json();
+    updatePhaseCards(latencyData.stats);
+    updateBarChart(latencyData.stats);
+    updateSparkline(latencyData.log);
+    updateStatsTable(latencyData.log);
+    renderLog();
+  } catch (e) {
+    console.warn('Latency fetch failed:', e.message);
+  }
+}
+
+refresh();
+setInterval(refresh, 5000);  // auto-refresh every 5s
+
+// ── PHASE CARDS ───────────────────────────
+function updatePhaseCards(stats) {
+  const phases = { hash: 'hash', ipfs: 'ipfs', prep: 'prep', mine: 'mine', total: 'total' };
+
+  for (const [key, sk] of Object.entries(phases)) {
+    const s = stats[sk];
+    if (!s) continue;
+    setText(`avg-${key}`, s.avg + '<span class="phase-unit">ms</span>');
+    setText(`min-${key}`, s.min + 'ms');
+    setText(`max-${key}`, s.max + 'ms');
+    setText(`p95-${key}`, s.p95 + 'ms');
+    setText(`p99-${key}`, s.p99 + 'ms');
+  }
+}
+
+function setText(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+// ── BAR CHART ─────────────────────────────
+function updateBarChart(stats) {
+  if (!stats) return;
+
+  const phases = [
+    { key: 'hash',  sk: 'hash'  },
+    { key: 'ipfs',  sk: 'ipfs'  },
+    { key: 'prep',  sk: 'prep'  },
+    { key: 'sign',  sk: 'sign'  },
+    { key: 'mine',  sk: 'mine'  }
+  ];
+
+  const maxVal = Math.max(...phases.map(p => stats[p.sk]?.avg || 0), 1);
+
+  document.getElementById('breakdownTotal').textContent =
+    `total avg: ${stats.total?.avg ?? '–'}ms`;
+
+  for (const { key, sk } of phases) {
+    const avg = stats[sk]?.avg ?? 0;
+    const pct = Math.round((avg / maxVal) * 100);
+    const bar = document.getElementById(`bar-${key}`);
+    const val = document.getElementById(`bval-${key}`);
+    if (bar) bar.style.width = pct + '%';
+    if (val) val.textContent = avg + 'ms';
+  }
+}
+
+// ── SPARKLINE ─────────────────────────────
+function updateSparkline(log) {
+  const canvas = document.getElementById('sparklineCanvas');
+  if (!canvas || !log || log.length === 0) return;
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width  = canvas.offsetWidth  * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  const pad = { top: 10, bottom: 20, left: 10, right: 10 };
+
+  ctx.clearRect(0, 0, W, H);
+
+  const recent = log.slice(0, 50).reverse();  // oldest → newest
+  if (recent.length < 2) return;
+
+  const maxVal = Math.max(...recent.map(e => e.totalMs || 0), 1);
+
+  function drawLine(data, color, alpha = 1) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth   = 1.5;
+    ctx.lineJoin    = 'round';
+    data.forEach((val, i) => {
+      const x = pad.left + (i / (data.length - 1)) * (W - pad.left - pad.right);
+      const y = H - pad.bottom - ((val / maxVal) * (H - pad.top - pad.bottom));
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Grid lines
+  ctx.strokeStyle = '#2a2a3e';
+  ctx.lineWidth   = 1;
+  [0.25, 0.5, 0.75, 1].forEach(t => {
+    const y = H - pad.bottom - t * (H - pad.top - pad.bottom);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = '#64748b';
+    ctx.font      = `${9 * dpr / dpr}px Space Mono`;
+    ctx.fillText(Math.round(maxVal * t) + 'ms', pad.left, y - 3);
+  });
+
+  drawLine(recent.map(e => e.ipfsMs  || 0), '#3b82f6', 0.7);
+  drawLine(recent.map(e => e.mineMs  || 0), '#10b981', 0.7);
+  drawLine(recent.map(e => e.totalMs || 0), '#a855f7', 1);
+
+  // Dots for total line
+  ctx.fillStyle = '#a855f7';
+  recent.forEach((e, i) => {
+    const x = pad.left + (i / (recent.length - 1)) * (W - pad.left - pad.right);
+    const y = H - pad.bottom - ((e.totalMs / maxVal) * (H - pad.top - pad.bottom));
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// ── PER-OPERATION STATS TABLE ─────────────
+function updateStatsTable(log) {
+  if (!log || log.length === 0) {
+    document.getElementById('statsBody').innerHTML =
+      '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📊</div><p>No transactions yet</p></div></td></tr>';
+    return;
+  }
+
+  const ops = ['addCredential', 'updateCredential', 'revokeCredential'];
+  const opLabels = { addCredential: 'Add', updateCredential: 'Update', revokeCredential: 'Revoke' };
+
+  function avg(arr, key) {
+    const vals = arr.map(e => e[key]).filter(v => v != null);
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+  }
+
+  function p(arr, key, pct) {
+    const vals = arr.map(e => e[key]).filter(v => v != null).sort((a,b) => a-b);
+    return vals.length ? (vals[Math.floor(vals.length * pct)] ?? vals[vals.length-1]) : 0;
+  }
+
+  const rows = ops.map(op => {
+    const subset = log.filter(e => e.operation === op);
+    if (!subset.length) return null;
+    return {
+      op, label: opLabels[op], count: subset.length,
+      hash:  avg(subset, 'hashMs'),
+      ipfs:  avg(subset, 'ipfsMs'),
+      prep:  avg(subset, 'prepMs'),
+      sign:  avg(subset, 'signMs'),
+      mine:  avg(subset, 'mineMs'),
+      total: avg(subset, 'totalMs'),
+      p95:   p(subset, 'totalMs', 0.95),
+      p99:   p(subset, 'totalMs', 0.99)
+    };
+  }).filter(Boolean);
+
+  // All combined
+  rows.unshift({
+    op: 'all', label: 'All Operations', count: log.length,
+    hash:  avg(log, 'hashMs'),
+    ipfs:  avg(log, 'ipfsMs'),
+    prep:  avg(log, 'prepMs'),
+    sign:  avg(log, 'signMs'),
+    mine:  avg(log, 'mineMs'),
+    total: avg(log, 'totalMs'),
+    p95:   p(log, 'totalMs', 0.95),
+    p99:   p(log, 'totalMs', 0.99)
+  });
+
+  document.getElementById('statsBody').innerHTML = rows.map(r => `
+    <tr>
+      <td style="color:var(--text);font-weight:700">${r.label}</td>
+      <td>${r.count}</td>
+      <td>${r.hash || '–'}</td>
+      <td>${r.ipfs || '–'}</td>
+      <td>${r.prep || '–'}</td>
+      <td>${r.sign || '–'}</td>
+      <td>${r.mine || '–'}</td>
+      <td class="hi">${r.total}</td>
+      <td>${r.p95}</td>
+      <td>${r.p99}</td>
+    </tr>`).join('');
+}
+
+// ── TX LOG ────────────────────────────────
+function setOpFilter(op, el) {
+  opFilter = op;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderLog();
+}
+
+function renderLog() {
+  if (!latencyData) return;
+
+  const query = document.getElementById('logSearch').value.trim().toLowerCase();
+  let data = latencyData.log || [];
+
+  // Op filter
+  if (opFilter !== 'all') {
+    data = data.filter(e => e.operation.toLowerCase().includes(opFilter));
+  }
+
+  // Search
+  if (query) {
+    data = data.filter(e =>
+      (e.txHash     && e.txHash.toLowerCase().includes(query))     ||
+      (e.operation  && e.operation.toLowerCase().includes(query))
+    );
+  }
+
+  document.getElementById('logCount').textContent = `${data.length} transactions`;
+
+  if (data.length === 0) {
+    document.getElementById('logBody').innerHTML =
+      '<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">⏱</div><p>No transactions match</p></div></td></tr>';
+    return;
+  }
+
+  // Determine fast/slow thresholds
+  const totals = data.map(e => e.totalMs).filter(Boolean).sort((a,b)=>a-b);
+  const p33 = totals[Math.floor(totals.length * 0.33)] || 0;
+  const p66 = totals[Math.floor(totals.length * 0.66)] || 0;
+
+  function msClass(ms) {
+    if (!ms) return '';
+    if (ms <= p33) return 'ms-fast';
+    if (ms >= p66) return 'ms-slow';
+    return 'ms-val';
+  }
+
+  function opBadge(op) {
+    if (op === 'addCredential')    return '<span class="op-badge op-add">Add</span>';
+    if (op === 'updateCredential') return '<span class="op-badge op-update">Update</span>';
+    if (op === 'revokeCredential') return '<span class="op-badge op-revoke">Revoke</span>';
+    return op;
+  }
+
+  function fmtTs(iso) {
+    return new Date(iso).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  }
+
+  document.getElementById('logBody').innerHTML = data.map((e, i) => `
+    <tr class="animate-in">
+      <td style="color:var(--text-faint)">${i+1}</td>
+      <td>${opBadge(e.operation)}</td>
+      <td>${fmtTs(e.timestamp)}</td>
+      <td>${e.hashMs ?? '–'}</td>
+      <td>${e.ipfsMs ?? '–'}</td>
+      <td>${e.prepMs ?? '–'}</td>
+      <td>${e.signMs ?? '–'}</td>
+      <td>${e.mineMs ?? '–'}</td>
+      <td class="${msClass(e.totalMs)}">${e.totalMs ?? '–'}</td>
+      <td>${e.gasUsed?.toLocaleString() ?? '–'}</td>
+      <td>${e.blockNumber ?? '–'}</td>
+      <td style="font-size:10px;color:var(--accent-hi)" title="${e.txHash}">${e.txHash ? e.txHash.slice(0,14)+'…' : '–'}</td>
+    </tr>`).join('');
+}
+
+// ── EXPORT ────────────────────────────────
+function exportCSV() {
+  if (!latencyData || !latencyData.log.length) {
+    toast('No data to export', 'error'); return;
+  }
+
+  const headers = ['#','Operation','Timestamp','Hash ms','IPFS ms','Prep ms','Sign ms','Mine ms','Total ms','Gas Used','Block','Tx Hash'];
+  const rows = latencyData.log.map((e, i) => [
+    i+1, e.operation, e.timestamp,
+    e.hashMs??'', e.ipfsMs??'', e.prepMs??'', e.signMs??'',
+    e.mineMs??'', e.totalMs??'', e.gasUsed??'',
+    e.blockNumber??'', e.txHash??''
+  ]);
+
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `latency-log-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast(`Exported ${latencyData.log.length} records`);
+}
+
+// ── CLEAR LOG ─────────────────────────────
+async function clearLog() {
+  if (!confirm('Clear the entire latency log? This cannot be undone.')) return;
+  await fetch(`${API}/latency`, { method: 'DELETE' });
+  latencyData = null;
+  await refresh();
+  toast('Log cleared');
+}
+
+// ── TOAST ─────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.className = `show ${type}`;
+  el.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+window.addEventListener('resize', () => {
+  if (latencyData) updateSparkline(latencyData.log);
+});
+</script>
+</body>
+</html>
